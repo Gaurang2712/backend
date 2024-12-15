@@ -1,5 +1,6 @@
 import express from 'express';
-import pkg from 'pg'; // Corrected import for pg module
+import pkg from 'pg';
+import cors from 'cors';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -9,16 +10,19 @@ const { Client } = pkg;
 const app = express();
 const port = process.env.PORT || 5000;
 
+app.use(cors()); // Enable CORS
+app.use(express.json()); // Middleware to parse JSON data
+
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
 });
 
 client.connect().catch((err) => {
   console.error('Failed to connect to the database:', err);
-  process.exit(1); // Exit if the database connection fails
+  process.exit(1); // Exit if database connection fails
 });
 
-// Create the table if it doesn't exist
+// Create table if it doesn't exist
 const createTable = async () => {
   const query = `
     CREATE TABLE IF NOT EXISTS students (
@@ -27,7 +31,6 @@ const createTable = async () => {
       description TEXT
     );
   `;
-
   try {
     await client.query(query);
     console.log('Table "students" ensured.');
@@ -36,37 +39,21 @@ const createTable = async () => {
   }
 };
 
-// Insert sample data if the table is empty
-const insertSampleData = async () => {
-  const checkQuery = 'SELECT COUNT(*) FROM students;';
+// Insert data route
+app.post('/insert', async (req, res) => {
+  const { name, description } = req.body;
+
+  const query = `INSERT INTO students (name, description) VALUES ($1, $2) RETURNING *;`;
   try {
-    const result = await client.query(checkQuery);
-
-    if (result.rows[0].count === '0') {
-      const insertQuery = `
-        INSERT INTO students (name, description) VALUES
-        ('Item 1', 'Description of item 1'),
-        ('Item 2', 'Description of item 2');
-      `;
-      await client.query(insertQuery);
-      console.log('Sample data inserted.');
-    }
+    const result = await client.query(query, [name, description]);
+    res.status(200).json(result.rows[0]);
   } catch (err) {
-    console.error('Error inserting sample data:', err);
+    console.error('Error inserting data:', err);
+    res.status(500).send('Failed to insert data');
   }
-};
-
-// Initialize database schema and data
-(async () => {
-  await createTable();
-  await insertSampleData();
-})();
-
-// Express routes
-app.get('/', (req, res) => {
-  res.send('Hello from Node.js app with PostgreSQL!');
 });
 
+// Fetch data route
 app.get('/data', async (req, res) => {
   try {
     const result = await client.query('SELECT * FROM students');
@@ -77,6 +64,12 @@ app.get('/data', async (req, res) => {
   }
 });
 
+// Initialize database schema and data
+(async () => {
+  await createTable();
+})();
+
+// Start the server
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
