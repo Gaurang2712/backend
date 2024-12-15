@@ -14,7 +14,7 @@ client.connect();
 // Create the table if it doesn't exist
 const createTable = async () => {
   const query = `
-    CREATE TABLE IF NOT EXISTS your_table (
+    CREATE TABLE IF NOT EXISTS students (
       id SERIAL PRIMARY KEY,
       name VARCHAR(100),
       description TEXT
@@ -26,7 +26,7 @@ const createTable = async () => {
 
 // Insert sample data if the table is empty
 const insertSampleData = async () => {
-  const checkQuery = 'SELECT COUNT(*) FROM your_table;';
+  const checkQuery = 'SELECT COUNT(*) FROM students;';
   const result = await client.query(checkQuery);
   
   if (result.rows[0].count === '0') {
@@ -50,7 +50,7 @@ app.get('/', (req, res) => {
 
 app.get('/data', async (req, res) => {
   try {
-    const result = await client.query('SELECT * FROM your_table');
+    const result = await client.query('SELECT * FROM students');
     res.json(result.rows);
   } catch (err) {
     console.error(err);
